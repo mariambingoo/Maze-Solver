@@ -1,9 +1,9 @@
 var columns;
 var rows;
-var w = 60;
+var w = 30;
 var grid = [];
 var current;
-
+var stack = [];
 
 function setup()
 {
@@ -19,7 +19,7 @@ function setup()
             grid.push(cell);
         }
     }
-    frameRate(5)
+    frameRate(10)
     current = grid[0];
 
 
@@ -33,12 +33,19 @@ function draw()
         grid[i].drawL();
     }
     current.visited = true;
+    current.highlight();
     var next = current.checkNeighbors();
     if (next)
     {
         next.visited = true;
+        stack.push(current);
+        removeWalls(current, next);
         current = next;
-        }
+    } else if (stack.length > 0)
+    {
+        current = stack.pop();
+    }
+
 
 }
 function index(x, y)
@@ -108,11 +115,45 @@ function Cell(x, y)
         } 
         if (this.visited)
         {
-            rect(i, j, w, w);
+            noStroke();
             fill("#F48484");
+            rect(i, j, w, w);
+        
         }
 
     }
+    this.highlight = function()
+    {
+        var i = this.x * w;
+        var j = this.y * w;
+        noStroke();
+        fill('red')
+        rect(i,j,w,w)
+    }
 
+}
+
+
+function removeWalls(a, b)
+{
+    var m = a.x - b.x;
+    var n = a.y - b.y;
+    if (m == -1)
+    {
+        a.walls[1] = false
+        b.walls[3] = false
+    } else if (m == 1)
+    {
+        a.walls[3] = false
+        b.walls[1] = false
+    }
+    if (n == -1) {
+        a.walls[2] = false
+        b.walls[0] = false
+    } else if (n == 1)
+    {
+        a.walls[0] = false
+        b.walls[2] = false
+    }
 
 }
