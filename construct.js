@@ -4,9 +4,12 @@ var w = 60;
 var grid = [];
 var current;
 var stack = [];
+var stack_solve;
 var counter = 0;
 var drewMaze = false;
 var solved = false;
+var queue;
+var curr;
 
 function setup()
 {
@@ -22,12 +25,19 @@ function setup()
         }
     }
     current = grid[0];
+    queue = [];
+    stack_solve = [];
+    curr = grid[0];
+    curr.visited_solve = true;
+    queue.push(curr);
+    stack_solve.push(curr);
     radio = createRadio();
     radio.option('1', 'Depth First Search');
     radio.option('2', 'Breadth First Search');
     radio.option('3', 'A*');
     radio.style('width', '3000px');
-    radio.selected('2');
+    radio.selected('1');
+    solution = grid[(columns*rows) - 1];
 }
 
 function draw()
@@ -36,25 +46,26 @@ function draw()
     drawMaze();
     if (drewMaze)
     {
-        frameRate(5);
+        frameRate(20);
         if (radio.value() == 1)
         {
-            solveDFS();
-            drawPath(); 
+            solveDFS(); 
         }
         else if (radio.value() == 2)
         {
             solveBFS();
-            drawPath();
         }
         else if (radio.value() == 3)
         {
             solveA();
-            drawPath();
         }
     }
     else
-        frameRate(100); 
+        frameRate(30);
+    if (solved)
+    {
+        drawPath();
+    }
 }
 function index(x, y)
 {
@@ -73,6 +84,8 @@ function Cell(x, y)
     this.parent;
     this.visited = false;
     this.visited_solve = false;
+    this.isPath = false;
+    this.isSolve = false;
     this.checkNeighbors = function ()
     {
         var neighbors = []
@@ -164,11 +177,11 @@ function Cell(x, y)
     }
     this.setTarget = function()
     {
-        var i = this.x * w;
-        var j = this.y * w;
+        var i = (this.x*w) + w/2;
+        var j = (this.y*w) + w/2;
         noStroke();
-        fill('blue')
-        rect(i,j,w-10,w-10);
+        fill('blue');
+        circle(i, j, 50);
     }
     this.setSolve = function()
     {
@@ -219,6 +232,10 @@ function drawMaze()
     for (var i = 0; i< grid.length; i++)
     {
         grid[i].drawL();
+        if (grid[i].isPath)
+            grid[i].setPath();
+        if (grid[i].isSolve)
+            grid[i].setSolve();
     }
     current.visited = true;
     current.highlight();
@@ -241,20 +258,16 @@ function drawMaze()
 
 function solveBFS()
 {
-    var queue = [];
     var target = grid[(columns*rows) - 1];
     target.setTarget();
-    var curr = grid[0];
-    queue.push(curr);
-    curr.visited_solve = true;
-    while (queue.length > 0 && !solved)
+    if (queue.length > 0 && !solved)
     {
         curr = queue.shift();
-        curr.setPath();
         if (JSON.stringify(target) === JSON.stringify(curr))
         {
             solved = true;
         }
+        curr.isPath = true;
         neighbors = curr.checkNeighbors_solve();
         if (neighbors)
         {
@@ -269,26 +282,22 @@ function solveBFS()
 }
 function solveDFS()
 {
-    var stack = [];
     var target = grid[(columns*rows) - 1];
     target.setTarget();
-    var curr = grid[0];
-    stack.push(curr);
-    curr.visited_solve = true;
-    while (stack.length > 0 && !solved)
+    if (stack_solve.length > 0 && !solved)
     {
-        curr = stack.pop();
-        curr.setPath();
+        curr = stack_solve.pop();
         if (JSON.stringify(target) === JSON.stringify(curr))
         {
             solved = true;
         }
+        curr.isPath = true;
         neighbors = curr.checkNeighbors_solve();
         if (neighbors)
         {
             for (let i=0; i < neighbors.length; i++)
             {
-                stack.push(neighbors[i]);
+                stack_solve.push(neighbors[i]);
                 neighbors[i].visited_solve = true;
                 neighbors[i].parent = curr;
             }
@@ -302,10 +311,9 @@ function solveA()
 
 function drawPath()
 {
-    var curr = grid[(columns*rows) - 1];
-    while (JSON.stringify(curr) !== JSON.stringify(grid[0]))
+    if (JSON.stringify(solution) !== JSON.stringify(grid[0]))
     {
-        curr = curr.parent;
-        curr.setSolve();
+        solution = solution.parent;
+        solution.isSolve = true;
     }
 }
