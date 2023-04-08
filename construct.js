@@ -1,6 +1,6 @@
 var columns;
 var rows;
-var w = 60;
+var w =40;
 var grid = [];
 var current;
 var stack = [];
@@ -10,10 +10,14 @@ var drewMaze = false;
 var solved = false;
 var queue;
 var curr;
+var heap;
+var isBFS = false;
+var isDFS = false;
+var isA = false;
 
 function setup()
 {
-    createCanvas(600, 600);
+    createCanvas(600, 600); 
     columns = floor(width / w);
     rows = floor(height / w);
     for (var y= 0; y < rows; y++)
@@ -25,47 +29,90 @@ function setup()
         }
     }
     current = grid[0];
-    queue = [];
-    stack_solve = [];
     curr = grid[0];
     curr.visited_solve = true;
+    queue = [];
+    stack_solve = [];
+    heap = new MinHeap();
     queue.push(curr);
+    heap.add(curr);
     stack_solve.push(curr);
     radio = createRadio();
     radio.option('1', 'Depth First Search');
     radio.option('2', 'Breadth First Search');
     radio.option('3', 'A*');
+    radio.position(600, 680);
     radio.style('width', '3000px');
     radio.selected('1');
+    solution = grid[(columns*rows) - 1];
+}
+function restart()
+{
+    console.log("restarted");
+    for (var i = 0; i < grid.length; i++)
+        {
+            grid[i].drawL();
+            grid[i].visited_solve = false;
+            grid[i].isPath = false;
+            grid[i].isSolve = false;
+            grid[i].parent = null;
+        }
+    solved = false;
+    curr = grid[0];
+    queue = [];
+    stack_solve = [];
+    heap = new MinHeap();
+    queue.push(curr);
+    heap.add(curr);
+    stack_solve.push(curr);
     solution = grid[(columns*rows) - 1];
 }
 
 function draw()
 {
-    background("#1F8A70");
+    background("#000000");
     drawMaze();
     if (drewMaze)
     {
         frameRate(20);
         if (radio.value() == 1)
         {
-            solveDFS(); 
+            if (isBFS || isA)
+                {
+                    restart();
+                    isBFS = false;
+                    isA = false;
+                }
+            solveDFS();
+            isDFS = true;
         }
         else if (radio.value() == 2)
         {
+            if (isDFS || isA)
+                {
+                    restart();
+                    isDFS = false;
+                    isA = false;
+                }
             solveBFS();
+            isBFS = true;
         }
         else if (radio.value() == 3)
         {
+            if (isDFS || isBFS)
+                {
+                    restart();
+                    isDFS = false;
+                    isBFS = false;
+                }
             solveA();
+            isA = true;
         }
     }
     else
         frameRate(30);
     if (solved)
-    {
         drawPath();
-    }
 }
 function index(x, y)
 {
@@ -86,6 +133,7 @@ function Cell(x, y)
     this.visited_solve = false;
     this.isPath = false;
     this.isSolve = false;
+    this.fCost;
     this.checkNeighbors = function ()
     {
         var neighbors = []
@@ -161,7 +209,7 @@ function Cell(x, y)
         if (this.visited)
         {
             noStroke();
-            fill("#F48484");
+            fill("#635985");
             rect(i, j, w, w);
         
         }
@@ -172,34 +220,39 @@ function Cell(x, y)
         var i = this.x * w;
         var j = this.y * w;
         noStroke();
-        fill('red')
+        fill('#9E4784')
         rect(i,j,w,w)
     }
     this.setTarget = function()
     {
-        var i = (this.x*w) + w/2;
-        var j = (this.y*w) + w/2;
+        var i = this.x * w;
+        var j = this.y * w;
         noStroke();
-        fill('blue');
-        circle(i, j, 50);
+        fill('#9E4784');
+        rect(i, j, w, w);
     }
     this.setSolve = function()
     {
         var i = (this.x*w) + w/2;
         var j = (this.y*w) + w/2;
         noStroke();
-        fill('green');
-        circle(i, j, 50);
+        fill('#9E4784');
+        circle(i, j, w/1.3);
     }
     this.setPath = function ()
     {
         var i = (this.x*w) + w/2;
         var j = (this.y*w) + w/2;
         noStroke();
-        fill('yellow');
-        circle(i, j, 50);
+        fill('#18122B'); 
+        circle(i, j, w/1.4);
     }
-
+    this.getFcost = function(starting, ending)
+    {
+        var distanceX = Math.abs(starting.x - ending.x);
+        var distanceY = Math.abs(ending.y - ending.y);
+        this.fCost = distanceX + distanceY;
+    }
 }
 
 
@@ -263,7 +316,7 @@ function solveBFS()
     if (queue.length > 0 && !solved)
     {
         curr = queue.shift();
-        if (JSON.stringify(target) === JSON.stringify(curr))
+        if (target === curr)
         {
             solved = true;
         }
@@ -287,7 +340,7 @@ function solveDFS()
     if (stack_solve.length > 0 && !solved)
     {
         curr = stack_solve.pop();
-        if (JSON.stringify(target) === JSON.stringify(curr))
+        if (target === curr)
         {
             solved = true;
         }
@@ -304,16 +357,39 @@ function solveDFS()
         }
     }
 }
+
 function solveA()
 {
+    var target = grid[(columns*rows) - 1];
+    target.setTarget();
+    if (stack_solve.length > 0 && !solved)
+    {
+        curr = heap.remove();
+        if (target === curr)
+            solved = true;
 
+        curr.isPath = true;
+        neighbors = curr.checkNeighbors_solve();
+        if (neighbors)
+        {
+            for (let i=0; i < neighbors.length; i++)
+            {
+                neighbors[i].getFcost(grid[0], target)
+                heap.add(neighbors[i])
+                neighbors[i].visited_solve = true;
+                neighbors[i].parent = curr;
+            }
+        }
+    }
 }
 
 function drawPath()
 {
-    if (JSON.stringify(solution) !== JSON.stringify(grid[0]))
+    console.log("drawPath");
+    if (solution !== grid[0])
     {
         solution = solution.parent;
         solution.isSolve = true;
+        console.log("isSolve");
     }
 }
